@@ -1,14 +1,10 @@
 {
   "name": "react-vite-tailwind",
-  "private": true,
   "version": "0.0.0",
-  "type": "module",
   "scripts": {
-  "build": "npx vite build",
-  "dev": "npx vite",
-  "preview": "npx vite preview"
-}
-    "server": "node server.js",
+    "dev": "npx vite",
+    "build": "npx vite build",
+    "preview": "npx vite preview",
     "start": "node server.js"
   },
   "dependencies": {
