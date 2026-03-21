@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(curl -s http://localhost:3001/api/health)",
+      "Bash(curl -s http://localhost:5178/)",
+      "Bash(curl -s http://localhost:3001/)",
+      "Bash(curl -s http://localhost:3001/api/audit-stats)",
+      "Bash(curl -s http://localhost:5178/admin.html)",
+      "Bash(curl -s \"http://localhost:5178/src/components/AdminPanel.tsx\")",
+      "Bash(curl -s \"http://localhost:5178/src/services/database.ts\")",
+      "Bash(curl -s \"http://localhost:5178/src/admin.tsx\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr \"5173 5174 5175 5176 5177 5178 3001\")",
+      "Bash(taskkill /F /PID 7944 /PID 21784 /PID 11804 /PID 12220 /PID 14916 /PID 24212 /PID 3088)",
+      "Bash(taskkill /F /PID 7944)",
+      "Bash(taskkill /F /PID 21784)",
+      "Bash(taskkill /F /PID 11804)",
+      "Bash(taskkill /F /PID 12220)",
+      "Bash(taskkill /F /PID 14916)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(npx kill-port:*)",
+      "Bash(curl -s http://localhost:5173/)",
+      "Bash(curl -s \"http://localhost:5173/admin.html\")",
+      "Bash(curl -s http://localhost:5173/admin.html)",
+      "Bash(curl -s \"http://localhost:5173/src/components/AdminPanel.tsx\")",
+      "Bash(curl -s \"http://localhost:5173/src/services/database.ts\")",
+      "Bash(findstr \"5173.*LISTEN\")"
+    ]
+  }
+}
