@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import sqlite3 from 'sqlite3';
+import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -22,14 +22,9 @@ app.use(bodyParser.json());
 
 // Initialize SQLite database
 const dbPath = path.join(__dirname, 'database.sqlite');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error opening database:', err);
-  } else {
-    console.log('Connected to SQLite database');
-    initializeTables();
-  }
-});
+const db = new Database(dbPath);
+console.log('Connected to SQLite database');
+initializeTables();
 
 // Create tables
 function initializeTables() {
