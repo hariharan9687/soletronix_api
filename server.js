@@ -12,11 +12,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',')
-    : '*',
-}));
+app.use(cors({ origin: '*' }));
 app.use(bodyParser.json());
 
 const dbPath = path.join(__dirname, 'database.sqlite');
