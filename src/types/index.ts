@@ -45,6 +45,7 @@ export interface EnergyReport {
 
 export interface EnergyInput {
   monthlyBill: number;
+  consumedUnits: number;   // bi-monthly units from EB bill
   squareFootage: number;
   roofAge: number;
   roofType: string;
@@ -53,7 +54,7 @@ export interface EnergyInput {
   shading: 'none' | 'minimal' | 'moderate' | 'heavy';
   electricVehicle: boolean;
   poolOrSpa: boolean;
-  loadSanction: number; // in kW, as per DISCOM sanction letter
+  loadSanction: number; // in kW, as per DISCOM sanction letter (required)
 }
 
 export interface ApiResponse<T> {

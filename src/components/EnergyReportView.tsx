@@ -1,24 +1,36 @@
+import { useState } from 'react';
 import {
   Sun, TreePine, Leaf, ArrowLeft,
   TrendingUp, Gauge, PanelTop, Zap, ArrowRight,
-  IndianRupee, Award, AlertTriangle,
+  IndianRupee, Award, AlertTriangle, Download, Loader2,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import type { EnergyReport, EnergyInput } from '../types';
+import { generateResidentialReportPDF } from '../utils/generateResidentialReportPDF';
+import { calculateBillFromUnits } from '../services/api';
 
 interface Props {
   report: EnergyReport;
   input: EnergyInput;
-  onGetFullReport: () => void;
   onBack: () => void;
 }
 
 const COLORS = ['#f97316', '#f59e0b', '#06b6d4', '#8b5cf6'];
 
-export function EnergyReportView({ report, input, onGetFullReport, onBack }: Props) {
+export function EnergyReportView({ report, input, onBack }: Props) {
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      await generateResidentialReportPDF(input, report);
+    } finally {
+      setDownloading(false);
+    }
+  };
   const energyComparison = [
     { name: 'Current Usage', kwh: report.monthlyUsageKWH, fill: '#ef4444' },
     { name: 'Solar Production', kwh: Math.round(report.solarProductionKWH / 12), fill: '#f97316' },
@@ -36,6 +48,12 @@ export function EnergyReportView({ report, input, onGetFullReport, onBack }: Pro
 
   const fmt = (n: number) => n.toLocaleString('en-IN');
   const fmtMoney = (n: number) => `₹${fmt(n)}`;
+
+  // Resolve effective monthly bill — from direct input or from consumed units
+  const effectiveMonthlyBill = input.monthlyBill > 0
+    ? input.monthlyBill
+    : calculateBillFromUnits(input.consumedUnits || 0, input.state);
+  const billAfterSolar = Math.max(0, effectiveMonthlyBill - report.estimatedSavingsMonthly);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -59,18 +77,37 @@ export function EnergyReportView({ report, input, onGetFullReport, onBack }: Pro
             <Sun className="h-5 w-5" />
             <span className="text-sm font-medium uppercase tracking-wide">Your Solar Savings Estimate</span>
           </div>
-          <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-3">
-            <div>
-              <p className="text-sm text-orange-100">Monthly Savings</p>
-              <p className="text-4xl font-bold">{fmtMoney(report.estimatedSavingsMonthly)}</p>
+
+          {/* Current Bill → After Solar */}
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <div className="flex-1 rounded-xl bg-white/10 px-5 py-4">
+              <p className="text-xs text-orange-100 uppercase tracking-wide">Current Monthly Bill</p>
+              <p className="mt-1 text-3xl font-bold">{fmtMoney(effectiveMonthlyBill)}</p>
+              <p className="mt-0.5 text-xs text-orange-200">What you pay now</p>
             </div>
-            <div>
-              <p className="text-sm text-orange-100">Yearly Savings</p>
-              <p className="text-4xl font-bold">{fmtMoney(report.estimatedSavingsYearly)}</p>
+            <div className="flex items-center justify-center">
+              <ArrowRight className="h-6 w-6 text-white/60" />
             </div>
-            <div>
-              <p className="text-sm text-orange-100">25-Year Savings</p>
-              <p className="text-4xl font-bold">{fmtMoney(report.estimatedSavings25Year)}</p>
+            <div className="flex-1 rounded-xl bg-white/20 px-5 py-4 ring-2 ring-white/40">
+              <p className="text-xs text-orange-100 uppercase tracking-wide">After Solar</p>
+              <p className="mt-1 text-3xl font-bold">{fmtMoney(billAfterSolar)}</p>
+              <p className="mt-0.5 text-xs text-orange-200">Estimated new bill</p>
+            </div>
+          </div>
+
+          {/* Savings row */}
+          <div className="mt-4 grid grid-cols-3 gap-3">
+            <div className="rounded-xl bg-white/10 px-3 py-3 text-center">
+              <p className="text-xs text-orange-100">Monthly Savings</p>
+              <p className="text-xl font-bold">{fmtMoney(report.estimatedSavingsMonthly)}</p>
+            </div>
+            <div className="rounded-xl bg-white/10 px-3 py-3 text-center">
+              <p className="text-xs text-orange-100">Yearly Savings</p>
+              <p className="text-xl font-bold">{fmtMoney(report.estimatedSavingsYearly)}</p>
+            </div>
+            <div className="rounded-xl bg-white/10 px-3 py-3 text-center">
+              <p className="text-xs text-orange-100">25-Year Savings</p>
+              <p className="text-xl font-bold">{fmtMoney(report.estimatedSavings25Year)}</p>
             </div>
           </div>
         </div>
@@ -259,21 +296,27 @@ export function EnergyReportView({ report, input, onGetFullReport, onBack }: Pro
         </div>
       </div>
 
-      {/* CTA */}
+      {/* Download Report CTA */}
       <div className="rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 p-8 text-center text-white shadow-xl">
-        <h3 className="text-2xl font-bold">Get Your Complete Personalised Report</h3>
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-orange-500/20 px-4 py-1.5 text-sm font-medium text-orange-400">
+          <Sun className="h-4 w-4" />
+          Soletronix Solar Report
+        </div>
+        <h3 className="text-2xl font-bold">Download Your Free Solar Savings Report</h3>
         <p className="mx-auto mt-2 max-w-lg text-slate-300">
-          Unlock detailed financing options, local installer quotes, DISCOM net metering details for {input.state}, 
-          and a custom system design — completely free, no obligation.
+          Get a detailed PDF with system sizing, financial projections, subsidy details, and 25-year savings — branded by Soletronix.
         </p>
         <button
-          onClick={onGetFullReport}
-          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-8 py-3 font-semibold text-white shadow-lg shadow-orange-500/25 transition-all hover:from-orange-600 hover:to-amber-600 hover:shadow-xl"
+          onClick={handleDownload}
+          disabled={downloading}
+          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-8 py-3 font-semibold text-white shadow-lg shadow-orange-500/25 transition-all hover:from-orange-600 hover:to-amber-600 disabled:opacity-70"
         >
-          <IndianRupee className="h-5 w-5" />
-          Get Free Full Report
-          <ArrowRight className="h-5 w-5" />
+          {downloading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
+          {downloading ? 'Generating PDF…' : 'Download PDF Report'}
         </button>
+        <p className="mt-4 text-xs text-slate-500">
+          ✉ marketing.soletronix@gmail.com &nbsp;|&nbsp; 📞 +91 6374988514 &nbsp;|&nbsp; 🌐 www.soletronix.com
+        </p>
       </div>
     </div>
   );

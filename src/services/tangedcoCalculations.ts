@@ -281,6 +281,7 @@ export const TN_INDUSTRIAL_DISTRICTS = [
   'Dindigul',
   'Sivakasi',
   'Cuddalore',
+  'Other',
 ];
 
 // ============================================================

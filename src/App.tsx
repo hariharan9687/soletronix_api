@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Sun, Calculator, Zap, Menu, X,
   Wifi, WifiOff, Factory, FileText, Building2,
@@ -10,6 +10,9 @@ import { EnergyCalculator } from './components/EnergyCalculator';
 import { TANGEDCOBillAudit } from './components/TANGEDCOBillAudit';
 import { LeadCaptureForm } from './components/LeadCaptureForm';
 import { addLog } from './services/logger';
+import { checkServerHealth } from './services/database';
+
+const soletronixLogo = import.meta.env.BASE_URL + 'soletronix-logo.jpg';
 
 type View = 'residential' | 'industrial';
 
@@ -26,7 +29,20 @@ export function App() {
     report: EnergyReport;
   } | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [backendConnected] = useState(false);
+  const [backendConnected, setBackendConnected] = useState(false);
+
+  useEffect(() => {
+    // Retry up to 3 times with 3s delay — handles Railway cold starts
+    const tryConnect = async (attempts: number) => {
+      const ok = await checkServerHealth();
+      if (ok) {
+        setBackendConnected(true);
+      } else if (attempts > 1) {
+        setTimeout(() => tryConnect(attempts - 1), 3000);
+      }
+    };
+    tryConnect(3);
+  }, []);
 
   const handleRequestReport = (input: EnergyInput, report: EnergyReport) => {
     addLog('calculator_run', 'info', `Residential calculator run — ${input.propertyType} in ${input.state}`, {
@@ -99,9 +115,7 @@ export function App() {
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur-lg">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <button onClick={() => navigate('industrial')} className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-200">
-              <Sun className="h-6 w-6 text-white" />
-            </div>
+            <img src={soletronixLogo} alt="Soletronix" className="h-10 w-10 rounded-xl object-contain shadow-lg" />
             <div className="text-left">
               <h1 className="text-lg font-bold text-slate-900">Soletronix</h1>
               <p className="hidden text-xs text-slate-400 sm:block">
@@ -237,6 +251,21 @@ export function App() {
           onSuccess={handleLeadSuccess}
         />
       )}
+
+      {/* Floating WhatsApp Chat Button */}
+      <a
+        href="https://wa.me/916374988514?text=Hi%20Soletronix!%20I%27m%20interested%20in%20solar%20energy%20solutions."
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-3 text-white shadow-2xl shadow-green-400/40 transition-all hover:scale-105 hover:bg-[#20c05a] active:scale-95"
+        aria-label="Chat on WhatsApp"
+      >
+        {/* WhatsApp SVG icon */}
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className="h-6 w-6 fill-white">
+          <path d="M16 0C7.163 0 0 7.163 0 16c0 2.833.738 5.49 2.027 7.8L0 32l8.47-2.003A15.93 15.93 0 0 0 16 32c8.837 0 16-7.163 16-16S24.837 0 16 0zm0 29.333a13.27 13.27 0 0 1-6.77-1.847l-.485-.288-5.027 1.188 1.23-4.892-.317-.5A13.267 13.267 0 0 1 2.667 16C2.667 8.636 8.636 2.667 16 2.667S29.333 8.636 29.333 16 23.364 29.333 16 29.333zm7.27-9.908c-.397-.198-2.347-1.157-2.71-1.288-.364-.132-.63-.198-.895.198-.264.397-1.024 1.288-1.255 1.554-.231.265-.463.298-.86.1-.397-.199-1.676-.618-3.193-1.97-1.18-1.051-1.977-2.349-2.208-2.746-.231-.397-.025-.611.173-.809.178-.178.397-.463.595-.695.198-.231.264-.397.397-.661.132-.265.066-.497-.033-.695-.099-.198-.895-2.157-1.226-2.952-.322-.776-.65-.67-.895-.683-.23-.012-.496-.015-.762-.015-.265 0-.695.099-1.058.497-.364.397-1.389 1.357-1.389 3.31s1.423 3.84 1.621 4.104c.198.265 2.8 4.274 6.785 5.993.948.41 1.688.654 2.265.837.951.303 1.817.26 2.5.158.763-.114 2.347-.96 2.678-1.886.33-.927.33-1.72.231-1.886-.099-.165-.364-.264-.762-.463z"/>
+        </svg>
+        <span className="text-sm font-semibold">Chat with us</span>
+      </a>
     </div>
   );
 }

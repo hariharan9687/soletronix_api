@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+
+const soletronixLogo = import.meta.env.BASE_URL + 'soletronix-logo.jpg';
 import {
   Sun, Shield, Eye, EyeOff, LogOut, Users, Activity,
   Wifi, WifiOff, Loader2, RefreshCw, AlertCircle,
@@ -82,9 +84,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
-            <Sun className="h-8 w-8 text-white" />
-          </div>
+          <img src={soletronixLogo} alt="Soletronix" className="mx-auto mb-4 h-14 w-14 rounded-2xl object-contain shadow-lg" />
           <h1 className="text-xl font-bold text-slate-900">Soletronix Admin</h1>
           <p className="mt-1 text-sm text-slate-500">Sign in to access the admin panel</p>
         </div>
@@ -153,7 +153,15 @@ function LeadsTab({ apiStatus }: { apiStatus: ConnectionStatus }) {
     const result = await adminUpdateLeadStatus(id, status);
     if (result.success) {
       await load();
-      if (selectedLead?.id === id && result.data) setSelectedLead(result.data);
+      if (selectedLead?.id === id) {
+        const updated = result.data as Lead;
+        if (updated && typeof updated.firstName === 'string') {
+          setSelectedLead(updated);
+        } else {
+          // fallback: patch just the status on the existing selectedLead
+          setSelectedLead((prev) => prev ? { ...prev, status, updatedAt: new Date().toISOString() } : prev);
+        }
+      }
     }
   };
 
@@ -171,7 +179,7 @@ function LeadsTab({ apiStatus }: { apiStatus: ConnectionStatus }) {
     return matchSearch && matchStatus;
   });
 
-  const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+  const fmt = (n: number | null | undefined) => n != null ? `₹${Number(n).toLocaleString('en-IN')}` : 'N/A';
   const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
 
   if (loading) return (
@@ -381,8 +389,8 @@ function LeadsTab({ apiStatus }: { apiStatus: ConnectionStatus }) {
                   { label: 'Mobile', value: selectedLead.phone },
                   { label: 'Location', value: `${selectedLead.address ? selectedLead.address + ', ' : ''}${selectedLead.city}, ${selectedLead.state} ${selectedLead.pinCode}` },
                   { label: 'Property Type', value: selectedLead.propertyType },
-                  { label: 'Monthly Bill', value: fmt(selectedLead.monthlyBill) },
-                  { label: 'Area', value: `${selectedLead.squareFootage.toLocaleString('en-IN')} sq ft` },
+                  { label: 'Monthly Bill', value: selectedLead.monthlyBill ? fmt(selectedLead.monthlyBill) : 'N/A' },
+                  { label: 'Area', value: selectedLead.squareFootage ? `${Number(selectedLead.squareFootage).toLocaleString('en-IN')} sq ft` : 'N/A' },
                   { label: 'Provider', value: selectedLead.currentProvider || 'N/A' },
                 ].map(({ label, value }) => (
                   <div key={label} className="rounded-lg bg-slate-50 p-3">
@@ -409,6 +417,44 @@ function LeadsTab({ apiStatus }: { apiStatus: ConnectionStatus }) {
                   </div>
                 </div>
               )}
+              {selectedLead.source === 'TANGEDCO Audit' && selectedLead.notes?.startsWith('TANGEDCO_AUDIT:') && (() => {
+                try {
+                  const auditInput = JSON.parse(selectedLead.notes.replace('TANGEDCO_AUDIT:', ''));
+                  return (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                      <h4 className="mb-3 flex items-center gap-2 font-semibold text-blue-800">
+                        <Zap className="h-4 w-4" /> Report Request Details
+                      </h4>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        {[
+                          { label: 'Consumer Number', value: auditInput.consumerNumber },
+                          { label: 'Tariff Category', value: auditInput.tariffCategory },
+                          { label: 'Billing Month', value: auditInput.billingMonth },
+                          { label: 'Total Units (kWh)', value: auditInput.totalUnitsKWH?.toLocaleString('en-IN') },
+                          { label: 'Contracted Demand', value: auditInput.contractedDemandKVA ? `${auditInput.contractedDemandKVA} KVA` : '—' },
+                          { label: 'Recorded Demand', value: auditInput.recordedDemandKVA ? `${auditInput.recordedDemandKVA} KVA` : '—' },
+                          { label: 'Power Factor', value: auditInput.powerFactor },
+                          { label: 'District', value: auditInput.district },
+                          { label: 'Industry Type', value: auditInput.industryType?.replace(/-/g, ' ') },
+                          { label: 'Shift Pattern', value: auditInput.shiftPattern },
+                          { label: 'Op. Hours/Day', value: auditInput.operatingHoursPerDay ? `${auditInput.operatingHoursPerDay} hrs` : '—' },
+                          { label: 'Op. Days/Month', value: auditInput.operatingDaysPerMonth ? `${auditInput.operatingDaysPerMonth} days` : '—' },
+                          { label: 'SIPCOT/SIDCO', value: auditInput.sipcotSidco || '—' },
+                          { label: 'Export to EU', value: auditInput.exportToEU ? `Yes (${auditInput.exportPercentage}%)` : 'No' },
+                          { label: 'Load Sanction', value: auditInput.loadSanction ? `${auditInput.loadSanction} kW` : '—' },
+                        ].map(({ label, value }) => (
+                          <div key={label} className="rounded-lg bg-white p-3">
+                            <p className="text-xs text-blue-600">{label}</p>
+                            <p className="mt-0.5 font-medium capitalize text-blue-900">{value || '—'}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                } catch {
+                  return null;
+                }
+              })()}
               <div>
                 <p className="mb-2 text-xs font-medium text-slate-500">Update Status</p>
                 <div className="flex flex-wrap gap-2">
@@ -1232,9 +1278,7 @@ export function AdminPanel() {
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-lg">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 shadow">
-              <Sun className="h-5 w-5 text-white" />
-            </div>
+            <img src={soletronixLogo} alt="Soletronix" className="h-9 w-9 rounded-xl object-contain shadow" />
             <div>
               <h1 className="text-base font-bold text-slate-900">Soletronix</h1>
               <p className="text-xs text-slate-400">Admin Panel</p>

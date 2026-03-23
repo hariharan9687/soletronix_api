@@ -72,9 +72,277 @@ const STATE_SUN_HOURS: Record<string, number> = {
 
 export const INDIAN_STATES = Object.keys(STATE_SUN_HOURS);
 
+// ============================================================
+// STATE-SPECIFIC RESIDENTIAL TARIFF SLABS
+// biMonthly:true  → slabs apply to 2-month consumption (TN, Kerala)
+// biMonthly:false → slabs apply to monthly consumption
+// slabs: [{upto: units, rate: ₹/unit}] — last slab has upto:Infinity
+// fixedCharge: ₹/month
+// ============================================================
+interface TariffSlab { upto: number; rate: number; }
+interface StateTariff { biMonthly: boolean; fixedCharge: number; slabs: TariffSlab[]; }
+
+const STATE_TARIFF: Record<string, StateTariff> = {
+  // Tamil Nadu — bi-monthly slabs (TANGEDCO LT-IA domestic)
+  'Tamil Nadu': {
+    biMonthly: true, fixedCharge: 15,
+    slabs: [
+      { upto: 100,  rate: 0.00 },
+      { upto: 200,  rate: 1.50 },
+      { upto: 500,  rate: 3.00 },
+      { upto: 1000, rate: 5.00 },
+      { upto: Infinity, rate: 6.50 },
+    ],
+  },
+  // Kerala — bi-monthly (KSEB LT-IA)
+  'Kerala': {
+    biMonthly: true, fixedCharge: 30,
+    slabs: [
+      { upto: 80,   rate: 2.25 },
+      { upto: 160,  rate: 2.90 },
+      { upto: 240,  rate: 3.75 },
+      { upto: 400,  rate: 5.25 },
+      { upto: Infinity, rate: 7.08 },
+    ],
+  },
+  // Maharashtra (MSEDCL)
+  'Maharashtra': {
+    biMonthly: false, fixedCharge: 75,
+    slabs: [
+      { upto: 100,  rate: 1.91 },
+      { upto: 300,  rate: 3.55 },
+      { upto: 500,  rate: 5.10 },
+      { upto: Infinity, rate: 6.05 },
+    ],
+  },
+  // Gujarat (DGVCL)
+  'Gujarat': {
+    biMonthly: false, fixedCharge: 50,
+    slabs: [
+      { upto: 50,   rate: 2.35 },
+      { upto: 200,  rate: 3.15 },
+      { upto: 400,  rate: 4.40 },
+      { upto: Infinity, rate: 5.50 },
+    ],
+  },
+  // Karnataka (BESCOM)
+  'Karnataka': {
+    biMonthly: false, fixedCharge: 40,
+    slabs: [
+      { upto: 30,   rate: 0.00 },
+      { upto: 100,  rate: 3.15 },
+      { upto: 200,  rate: 6.00 },
+      { upto: 400,  rate: 7.10 },
+      { upto: Infinity, rate: 8.00 },
+    ],
+  },
+  // Andhra Pradesh (APEPDCL/APSPDCL)
+  'Andhra Pradesh': {
+    biMonthly: false, fixedCharge: 25,
+    slabs: [
+      { upto: 50,   rate: 1.45 },
+      { upto: 100,  rate: 2.60 },
+      { upto: 200,  rate: 3.75 },
+      { upto: 300,  rate: 5.25 },
+      { upto: Infinity, rate: 6.50 },
+    ],
+  },
+  // Telangana (TSSPDCL/TSNPDCL)
+  'Telangana': {
+    biMonthly: false, fixedCharge: 25,
+    slabs: [
+      { upto: 50,   rate: 1.45 },
+      { upto: 100,  rate: 2.60 },
+      { upto: 200,  rate: 3.75 },
+      { upto: 300,  rate: 5.25 },
+      { upto: Infinity, rate: 6.50 },
+    ],
+  },
+  // Delhi (BSES/BYPL/TPDDL)
+  'Delhi': {
+    biMonthly: false, fixedCharge: 125,
+    slabs: [
+      { upto: 200,  rate: 3.00 },
+      { upto: 400,  rate: 4.50 },
+      { upto: 800,  rate: 6.50 },
+      { upto: Infinity, rate: 7.00 },
+    ],
+  },
+  // Rajasthan (JVVNL/AVVNL)
+  'Rajasthan': {
+    biMonthly: false, fixedCharge: 80,
+    slabs: [
+      { upto: 50,   rate: 3.35 },
+      { upto: 150,  rate: 5.25 },
+      { upto: 300,  rate: 6.30 },
+      { upto: Infinity, rate: 6.95 },
+    ],
+  },
+  // Uttar Pradesh (UPPCL)
+  'Uttar Pradesh': {
+    biMonthly: false, fixedCharge: 80,
+    slabs: [
+      { upto: 100,  rate: 3.35 },
+      { upto: 300,  rate: 4.65 },
+      { upto: Infinity, rate: 5.90 },
+    ],
+  },
+  // West Bengal (WBSEDCL/CESC)
+  'West Bengal': {
+    biMonthly: false, fixedCharge: 40,
+    slabs: [
+      { upto: 25,   rate: 4.78 },
+      { upto: 100,  rate: 5.63 },
+      { upto: 300,  rate: 6.14 },
+      { upto: Infinity, rate: 6.66 },
+    ],
+  },
+  // Madhya Pradesh (MPPKVVCL)
+  'Madhya Pradesh': {
+    biMonthly: false, fixedCharge: 70,
+    slabs: [
+      { upto: 50,   rate: 3.79 },
+      { upto: 150,  rate: 4.98 },
+      { upto: 300,  rate: 5.95 },
+      { upto: Infinity, rate: 6.42 },
+    ],
+  },
+  // Bihar (NBPDCL/SBPDCL)
+  'Bihar': {
+    biMonthly: false, fixedCharge: 65,
+    slabs: [
+      { upto: 100,  rate: 5.25 },
+      { upto: 200,  rate: 5.75 },
+      { upto: Infinity, rate: 6.50 },
+    ],
+  },
+  // Haryana (DHBVNL/UHBVNL)
+  'Haryana': {
+    biMonthly: false, fixedCharge: 60,
+    slabs: [
+      { upto: 50,   rate: 2.00 },
+      { upto: 100,  rate: 2.50 },
+      { upto: 200,  rate: 5.25 },
+      { upto: 400,  rate: 6.30 },
+      { upto: Infinity, rate: 6.90 },
+    ],
+  },
+  // Punjab (PSPCL)
+  'Punjab': {
+    biMonthly: false, fixedCharge: 50,
+    slabs: [
+      { upto: 100,  rate: 3.49 },
+      { upto: 300,  rate: 5.98 },
+      { upto: Infinity, rate: 7.73 },
+    ],
+  },
+  // Himachal Pradesh (HPSEBL)
+  'Himachal Pradesh': {
+    biMonthly: false, fixedCharge: 25,
+    slabs: [
+      { upto: 60,   rate: 0.00 },
+      { upto: 125,  rate: 1.65 },
+      { upto: 300,  rate: 2.50 },
+      { upto: Infinity, rate: 3.75 },
+    ],
+  },
+  // Odisha (TPCODL/NESCO)
+  'Odisha': {
+    biMonthly: false, fixedCharge: 40,
+    slabs: [
+      { upto: 50,   rate: 1.75 },
+      { upto: 200,  rate: 3.35 },
+      { upto: 400,  rate: 4.85 },
+      { upto: Infinity, rate: 5.70 },
+    ],
+  },
+  // Assam (APDCL)
+  'Assam': {
+    biMonthly: false, fixedCharge: 50,
+    slabs: [
+      { upto: 30,   rate: 2.25 },
+      { upto: 100,  rate: 4.50 },
+      { upto: 300,  rate: 6.00 },
+      { upto: Infinity, rate: 7.00 },
+    ],
+  },
+  // Jharkhand (JBVNL)
+  'Jharkhand': {
+    biMonthly: false, fixedCharge: 60,
+    slabs: [
+      { upto: 100,  rate: 4.00 },
+      { upto: 200,  rate: 5.50 },
+      { upto: Infinity, rate: 6.50 },
+    ],
+  },
+  // Chhattisgarh (CSPDCL)
+  'Chhattisgarh': {
+    biMonthly: false, fixedCharge: 45,
+    slabs: [
+      { upto: 30,   rate: 0.00 },
+      { upto: 100,  rate: 3.30 },
+      { upto: 200,  rate: 4.50 },
+      { upto: Infinity, rate: 5.60 },
+    ],
+  },
+  // Goa (GESC)
+  'Goa': {
+    biMonthly: false, fixedCharge: 30,
+    slabs: [
+      { upto: 30,   rate: 1.10 },
+      { upto: 100,  rate: 2.10 },
+      { upto: 200,  rate: 3.30 },
+      { upto: 400,  rate: 4.50 },
+      { upto: Infinity, rate: 5.50 },
+    ],
+  },
+};
+
+// Default tariff for states not listed (flat rate approximation)
+const DEFAULT_TARIFF: StateTariff = {
+  biMonthly: false, fixedCharge: 50,
+  slabs: [{ upto: Infinity, rate: 6.00 }],
+};
+
+/**
+ * Calculate monthly electricity bill from bi-monthly consumed units
+ * using state-specific residential slab tariff rates.
+ * Always returns the MONTHLY equivalent bill (₹/month).
+ */
+export function calculateBillFromUnits(biMonthlyUnits: number, state: string): number {
+  if (!biMonthlyUnits || biMonthlyUnits <= 0) return 0;
+
+  const tariff = STATE_TARIFF[state] || DEFAULT_TARIFF;
+  const { biMonthly, fixedCharge, slabs } = tariff;
+
+  // Units to apply slabs against
+  const units = biMonthly ? biMonthlyUnits : biMonthlyUnits / 2;
+
+  let charge = 0;
+  let prevLimit = 0;
+  let remaining = units;
+
+  for (const slab of slabs) {
+    if (remaining <= 0) break;
+    const slabCapacity = slab.upto - prevLimit;
+    const slabUnits = Math.min(remaining, slabCapacity);
+    charge += slabUnits * slab.rate;
+    remaining -= slabUnits;
+    prevLimit = slab.upto;
+  }
+
+  // Add fixed/meter charge
+  charge += fixedCharge;
+
+  // If bi-monthly slabs, divide by 2 to get monthly
+  const monthlyBill = biMonthly ? charge / 2 : charge;
+
+  return Math.round(monthlyBill);
+}
+
 // Indian-specific constants
-const AVG_ELECTRICITY_RATE = 8; // ₹/kWh national average
-const COST_PER_WATT = 45; // ₹/Wp installed (with BOS)
+const AVG_ELECTRICITY_RATE = 8; // ₹/kWh national average (used for savings calc)
+const COST_PER_WATT = 60;       // ₹/Wp installed (with BOS) — ₹60,000/kW
 const CO2_PER_KWH = 0.00082; // metric tons per kWh (India grid emission factor)
 const TREES_PER_TON_CO2 = 16.5;
 const PANEL_WATTAGE = 545; // watts per panel (modern bifacial)
@@ -86,24 +354,37 @@ const ELECTRICITY_ESCALATION = 1.05; // 5% annual increase in India
 const CENTRAL_SUBSIDY = 78000;
 
 export function calculateEnergyReport(input: EnergyInput): EnergyReport {
-  const sunHours = STATE_SUN_HOURS[input.state] || 5.0;
-  
+  // Fixed generation rate: 5.5 kWh per kW per day (India standard rooftop solar)
+  const SOLAR_GEN_RATE = 5.5; // kWh/kW/day
+  const sunHours = STATE_SUN_HOURS[input.state] || SOLAR_GEN_RATE;
+
   const shadingFactor = { none: 1.0, minimal: 0.9, moderate: 0.75, heavy: 0.55 }[input.shading];
-  
-  // Calculate monthly usage from bill
-  const monthlyUsageKWH = input.monthlyBill / AVG_ELECTRICITY_RATE;
-  
+
+  // Resolve monthly bill — prefer direct bill entry; fall back to units-based calculation
+  const resolvedMonthlyBill = input.monthlyBill > 0
+    ? input.monthlyBill
+    : (input.consumedUnits > 0 ? calculateBillFromUnits(input.consumedUnits, input.state) : 0);
+
+  // Resolve monthly usage in kWh
+  // If consumed units are provided use them directly (bi-monthly ÷ 2 = monthly kWh)
+  const monthlyUsageKWH = input.consumedUnits > 0
+    ? input.consumedUnits / 2          // bi-monthly units → monthly kWh
+    : resolvedMonthlyBill / AVG_ELECTRICITY_RATE;
+
   // Extra load adjustments
   let loadMultiplier = 1.0;
   if (input.electricVehicle) loadMultiplier += 0.20;
-  if (input.poolOrSpa) loadMultiplier += 0.10; // Water pump / heating
-  
+  if (input.poolOrSpa) loadMultiplier += 0.10;
+
   const adjustedMonthlyKWH = monthlyUsageKWH * loadMultiplier;
   const yearlyKWH = adjustedMonthlyKWH * 12;
-  
-  // System size calculation
-  const calculatedSizeKW = yearlyKWH / (sunHours * 365 * shadingFactor);
-  const cappedByLoadSanction = !!(input.loadSanction && input.loadSanction > 0 && calculatedSizeKW > input.loadSanction);
+
+  // System size: yearlyKWH / (5.5 kWh/kW/day × 365 days × shading)
+  const hasLoadSanction = !!(input.loadSanction && input.loadSanction > 0);
+  const calculatedSizeKW = resolvedMonthlyBill > 0 || input.consumedUnits > 0
+    ? yearlyKWH / (sunHours * 365 * shadingFactor)
+    : (hasLoadSanction ? input.loadSanction! : 0);
+  const cappedByLoadSanction = !!(hasLoadSanction && calculatedSizeKW > input.loadSanction!);
   const systemSizeKW = cappedByLoadSanction ? input.loadSanction! : calculatedSizeKW;
   const panelsNeeded = Math.ceil((systemSizeKW * 1000) / PANEL_WATTAGE);
   const roofSpaceNeeded = panelsNeeded * SQFT_PER_PANEL;

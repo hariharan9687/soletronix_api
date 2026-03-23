@@ -4,8 +4,9 @@ import {
   Gauge, TrendingUp, AlertTriangle, CheckCircle2,
   Sun, Battery, Leaf, IndianRupee, FileText,
   Clock, Building2, Target, Award, BarChart3,
-  Calculator, Send,
+  Calculator, Download, Loader2,
 } from 'lucide-react';
+import { generateTANGEDCOReportPDF } from '../utils/generateReportPDF';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart as RechartsPie, Pie, Cell,
@@ -17,7 +18,7 @@ import {
   calculateTANGEDCOBillAudit,
   TN_INDUSTRIAL_DISTRICTS,
 } from '../services/tangedcoCalculations';
-import { saveTANGEDCOAudit } from '../services/database';
+import { saveTANGEDCOAudit, saveLeadFromTANGEDCOAudit } from '../services/database';
 import { PreCalculationForm } from './PreCalculationForm';
 
 const TARIFF_CATEGORIES = [
@@ -82,14 +83,14 @@ export function TANGEDCOBillAudit({ onLeadCapture }: Props) {
     connectedLoadHP: 0,
     loadSanction: 0,
     totalUnitsKWH: 50000,
-    powerFactor: 0.88,
+    powerFactor: 0.90,
     industryType: 'spinning-mill',
     operatingHoursPerDay: 24,
     operatingDaysPerMonth: 26,
     shiftPattern: 'continuous',
     district: 'Coimbatore',
     sipcotSidco: 'SIPCOT',
-    exportToEU: true,
+    exportToEU: false,
     exportPercentage: 30,
   });
 
@@ -124,13 +125,16 @@ export function TANGEDCOBillAudit({ onLeadCapture }: Props) {
 
   const handleSaveToDatabase = async (contactData: UserContact) => {
     const reportResult = calculateTANGEDCOBillAudit(input);
-    const result = await saveTANGEDCOAudit({
-      contactData,
-      inputData: input as unknown as Record<string, unknown>,
-      reportData: reportResult as unknown as Record<string, unknown>,
-    });
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to save to database');
+    const inputRecord = input as unknown as Record<string, unknown>;
+    const reportRecord = reportResult as unknown as Record<string, unknown>;
+
+    const [auditResult] = await Promise.all([
+      saveTANGEDCOAudit({ contactData, inputData: inputRecord, reportData: reportRecord }),
+      saveLeadFromTANGEDCOAudit(contactData, inputRecord, reportRecord),
+    ]);
+
+    if (!auditResult.success) {
+      throw new Error(auditResult.error || 'Failed to save to database');
     }
   };
 
@@ -506,6 +510,7 @@ export function TANGEDCOBillAudit({ onLeadCapture }: Props) {
                   }
                   setStep1Error('');
                   setStep((s) => Math.min(steps.length - 1, s + 1));
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className="flex items-center gap-2 rounded-xl bg-green-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-green-200 transition-all hover:bg-green-600"
               >
@@ -514,7 +519,10 @@ export function TANGEDCOBillAudit({ onLeadCapture }: Props) {
               </button>
             ) : (
               <button
-                onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
+                onClick={() => {
+                  setStep((s) => Math.min(steps.length - 1, s + 1));
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 className="flex items-center gap-2 rounded-xl bg-green-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-green-200 transition-all hover:bg-green-600"
               >
                 Next
@@ -540,6 +548,7 @@ interface ReportProps {
 }
 
 function TANGEDCOReportView({ report, input, onBack, onLeadCapture }: ReportProps) {
+  const [downloading, setDownloading] = useState(false);
   const fmtMoney = (n: number) => `₹${n.toLocaleString('en-IN')}`;
   const fmtNum = (n: number) => n.toLocaleString('en-IN');
 
@@ -895,21 +904,31 @@ function TANGEDCOReportView({ report, input, onBack, onLeadCapture }: ReportProp
         </div>
       </div>
 
-      {/* CTA */}
+      {/* Download Report CTA */}
       <div className="rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 p-8 text-center text-white shadow-xl">
-        <h3 className="text-2xl font-bold">Get Your Free Detailed Proposal</h3>
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-green-500/20 px-4 py-1.5 text-sm font-medium text-green-400">
+          <FileText className="h-4 w-4" />
+          Soletronix Audit Report
+        </div>
+        <h3 className="text-2xl font-bold">Download Your Free Audit Report</h3>
         <p className="mx-auto mt-2 max-w-lg text-slate-300">
-          Our team will contact you with a customized solar + OA solution, 
-          financing options, and CCTS compliance roadmap for your {input.industryType.replace('-', ' ')} unit.
+          Get a detailed PDF with bill breakdown, savings analysis, solar &amp; open access recommendations — branded by Soletronix.
         </p>
         <button
-          onClick={() => onLeadCapture?.(input, report)}
-          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 px-8 py-3 font-semibold text-white shadow-lg transition-all hover:from-green-600 hover:to-emerald-600"
+          onClick={async () => {
+            setDownloading(true);
+            try { await generateTANGEDCOReportPDF(input, report); }
+            finally { setDownloading(false); }
+          }}
+          disabled={downloading}
+          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 px-8 py-3 font-semibold text-white shadow-lg transition-all hover:from-green-600 hover:to-emerald-600 disabled:opacity-70"
         >
-          <Send className="h-5 w-5" />
-          Request Free Site Survey
-          <ArrowRight className="h-5 w-5" />
+          {downloading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
+          {downloading ? 'Generating PDF…' : 'Download PDF Report'}
         </button>
+        <p className="mt-4 text-xs text-slate-500">
+          ✉ marketing.soletronix@gmail.com &nbsp;|&nbsp; 📞 +91 6374988514 &nbsp;|&nbsp; 🌐 www.soletronix.com
+        </p>
       </div>
     </div>
   );

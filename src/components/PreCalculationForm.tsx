@@ -66,13 +66,18 @@ export function PreCalculationForm({ onSubmit, onSaveToDatabase }: Props) {
 
     try {
       if (onSaveToDatabase) {
-        await onSaveToDatabase(form);
+        try {
+          await onSaveToDatabase(form);
+        } catch (dbError) {
+          // Log but don't block — user still gets their report
+          console.error('Database save error (non-blocking):', dbError);
+        }
       }
       await new Promise((r) => setTimeout(r, 300));
       onSubmit(form);
     } catch (error) {
-      setSaveError('Failed to save data. Please try again.');
-      console.error('Database save error:', error);
+      setSaveError('Something went wrong. Please try again.');
+      console.error('Submit error:', error);
     } finally {
       setLoading(false);
     }

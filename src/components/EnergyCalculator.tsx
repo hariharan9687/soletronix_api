@@ -6,13 +6,13 @@ import {
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import type { EnergyInput, EnergyReport } from '../types';
-import { calculateEnergyReport, INDIAN_STATES } from '../services/api';
+import { calculateEnergyReport, calculateBillFromUnits, INDIAN_STATES } from '../services/api';
 import { saveResidentialCalculator } from '../services/database';
 import { EnergyReportView } from './EnergyReportView';
 import { PreCalculationForm } from './PreCalculationForm';
 
 interface Props {
-  onRequestReport: (input: EnergyInput, report: EnergyReport) => void;
+  onRequestReport?: (input: EnergyInput, report: EnergyReport) => void;
 }
 
 interface UserContact {
@@ -33,7 +33,8 @@ export function EnergyCalculator({ onRequestReport }: Props) {
   const [userContact, setUserContact] = useState<UserContact | null>(null);
 
   const [input, setInput] = useState<EnergyInput>({
-    monthlyBill: 3000,
+    monthlyBill: 0,
+    consumedUnits: 0,
     squareFootage: 1200,
     roofAge: 5,
     roofType: 'rcc',
@@ -54,12 +55,6 @@ export function EnergyCalculator({ onRequestReport }: Props) {
     const result = calculateEnergyReport(input);
     setReport(result);
     setShowReport(true);
-  };
-
-  const handleGetFullReport = () => {
-    if (report) {
-      onRequestReport(input, report);
-    }
   };
 
   const handleSaveToDatabase = async (contactData: UserContact) => {
@@ -84,7 +79,6 @@ export function EnergyCalculator({ onRequestReport }: Props) {
       <EnergyReportView
         report={report}
         input={input}
-        onGetFullReport={handleGetFullReport}
         onBack={() => setShowReport(false)}
       />
     );
@@ -147,37 +141,90 @@ export function EnergyCalculator({ onRequestReport }: Props) {
             ))}
           </select>
         </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">
-            Monthly Electricity Bill
-          </label>
-          <div className="relative">
-            <IndianRupee className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-            <input
-              type="number"
-              value={input.monthlyBill}
-              onChange={(e) => updateField('monthlyBill', Number(e.target.value))}
-              className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-4 text-slate-900 shadow-sm transition focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200"
-              placeholder="3000"
-              min={0}
-            />
-          </div>
-          <div className="mt-2">
-            <input
-              type="range"
-              min={500}
-              max={100000}
-              step={500}
-              value={input.monthlyBill}
-              onChange={(e) => updateField('monthlyBill', Number(e.target.value))}
-              className="w-full accent-orange-500"
-            />
-            <div className="flex justify-between text-xs text-slate-400">
-              <span>₹500</span>
-              <span>₹1,00,000</span>
+        {/* ── Bill Amount OR Consumed Units (either required) ── */}
+        <div className="rounded-xl border border-orange-200 bg-orange-50/50 p-4 space-y-3">
+          <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide">
+            Enter Bill Amount OR Bi-Monthly Consumed Units
+          </p>
+
+          {/* Monthly Bill */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
+              Monthly Electricity Bill (₹)
+            </label>
+            <div className="relative">
+              <IndianRupee className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+              <input
+                type="number"
+                value={input.monthlyBill || ''}
+                onChange={(e) => {
+                  updateField('monthlyBill', Number(e.target.value));
+                  if (Number(e.target.value) > 0) updateField('consumedUnits', 0);
+                  setStep1Error('');
+                }}
+                className={cn(
+                  'w-full rounded-xl border bg-white py-3 pl-10 pr-4 text-slate-900 shadow-sm transition focus:outline-none focus:ring-2',
+                  step1Error && !input.monthlyBill && !input.consumedUnits
+                    ? 'border-red-400 focus:border-red-400 focus:ring-red-200'
+                    : 'border-slate-300 focus:border-orange-500 focus:ring-orange-200'
+                )}
+                placeholder="e.g. 1500"
+                min={0}
+              />
             </div>
           </div>
+
+          {/* OR divider */}
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-orange-200" />
+            <span className="text-xs font-bold text-orange-500">OR</span>
+            <div className="h-px flex-1 bg-orange-200" />
+          </div>
+
+          {/* Bi-Monthly Consumed Units */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
+              Consumed Units — Bi-Monthly (kWh)
+            </label>
+            <div className="relative">
+              <Zap className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+              <input
+                type="number"
+                value={input.consumedUnits || ''}
+                onChange={(e) => {
+                  updateField('consumedUnits', Number(e.target.value));
+                  if (Number(e.target.value) > 0) updateField('monthlyBill', 0);
+                  setStep1Error('');
+                }}
+                className={cn(
+                  'w-full rounded-xl border bg-white py-3 pl-10 pr-4 text-slate-900 shadow-sm transition focus:outline-none focus:ring-2',
+                  step1Error && !input.monthlyBill && !input.consumedUnits
+                    ? 'border-red-400 focus:border-red-400 focus:ring-red-200'
+                    : 'border-slate-300 focus:border-orange-500 focus:ring-orange-200'
+                )}
+                placeholder="e.g. 200"
+                min={0}
+              />
+            </div>
+            {input.consumedUnits > 0 && (
+              <p className="mt-1.5 text-xs text-green-700 font-medium">
+                ≈ ₹{calculateBillFromUnits(input.consumedUnits, input.state).toLocaleString('en-IN')}/month
+                &nbsp;(as per {input.state} tariff)
+              </p>
+            )}
+            <p className="mt-1 text-xs text-slate-400">
+              Total units from your bi-monthly EB bill (as printed on bill)
+            </p>
+          </div>
+
+          {step1Error && (
+            <p className="flex items-center gap-1 text-xs text-red-600">
+              <AlertCircle className="h-3.5 w-3.5" /> {step1Error}
+            </p>
+          )}
         </div>
+
+        {/* Property Area */}
         <div>
           <label className="mb-1.5 block text-sm font-medium text-slate-700">
             Property Area (sq ft)
@@ -191,6 +238,8 @@ export function EnergyCalculator({ onRequestReport }: Props) {
             min={0}
           />
         </div>
+
+        {/* Load Sanction — Required */}
         <div>
           <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-slate-700">
             Load Sanction (kW)
@@ -202,21 +251,17 @@ export function EnergyCalculator({ onRequestReport }: Props) {
             onChange={(e) => { updateField('loadSanction', Number(e.target.value)); setStep1Error(''); }}
             className={cn(
               'w-full rounded-xl border bg-white px-4 py-3 text-slate-900 shadow-sm transition focus:outline-none focus:ring-2',
-              step1Error
+              step1Error && (!input.loadSanction || input.loadSanction <= 0)
                 ? 'border-red-400 focus:border-red-400 focus:ring-red-200'
                 : 'border-slate-300 focus:border-orange-500 focus:ring-orange-200'
             )}
             placeholder="e.g. 5"
-            min={0}
+            min={0.1}
+            step={0.5}
           />
           <p className="mt-1.5 text-xs text-slate-400">
-            As per your DISCOM load sanction / service connection letter
+            As per your DISCOM sanction letter / service connection document
           </p>
-          {step1Error && (
-            <p className="mt-1.5 flex items-center gap-1 text-xs text-red-600">
-              <AlertCircle className="h-3.5 w-3.5" /> {step1Error}
-            </p>
-          )}
         </div>
       </div>
     </div>,
@@ -432,12 +477,19 @@ export function EnergyCalculator({ onRequestReport }: Props) {
             {step < steps.length - 2 ? (
               <button
                 onClick={() => {
-                  if (step === 1 && (!input.loadSanction || input.loadSanction <= 0)) {
-                    setStep1Error('Load sanction is required. Please enter the value from your DISCOM letter.');
-                    return;
+                  if (step === 1) {
+                    if (!input.loadSanction || input.loadSanction <= 0) {
+                      setStep1Error('Load Sanction is required. Please enter the value from your DISCOM sanction letter.');
+                      return;
+                    }
+                    if ((!input.monthlyBill || input.monthlyBill <= 0) && (!input.consumedUnits || input.consumedUnits <= 0)) {
+                      setStep1Error('Please enter either your Monthly Bill amount or your Bi-Monthly Consumed Units.');
+                      return;
+                    }
                   }
                   setStep1Error('');
                   setStep((s) => Math.min(steps.length - 1, s + 1));
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className="flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition-all hover:bg-orange-600"
               >
@@ -446,7 +498,10 @@ export function EnergyCalculator({ onRequestReport }: Props) {
               </button>
             ) : (
               <button
-                onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
+                onClick={() => {
+                  setStep((s) => Math.min(steps.length - 1, s + 1));
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 className="flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition-all hover:bg-orange-600"
               >
                 Next

@@ -90,7 +90,7 @@ export function LeadsDashboard() {
     return matchesSearch && matchesStatus;
   });
 
-  const fmtMoney = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+  const fmtMoney = (n: number | null | undefined) => n != null ? `₹${Number(n).toLocaleString('en-IN')}` : 'N/A';
   const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
 
   if (loading) {
@@ -408,7 +408,7 @@ export function LeadsDashboard() {
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3">
                   <p className="text-xs text-slate-500">Area</p>
-                  <p className="font-medium text-slate-900">{selectedLead.squareFootage.toLocaleString('en-IN')} sq ft</p>
+                  <p className="font-medium text-slate-900">{selectedLead.squareFootage ? Number(selectedLead.squareFootage).toLocaleString('en-IN') : 'N/A'} sq ft</p>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3">
                   <p className="text-xs text-slate-500">Provider (DISCOM)</p>
