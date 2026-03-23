@@ -84,16 +84,21 @@ console.log('🔑 GMAIL_APP_PASSWORD set:', !!process.env.GMAIL_APP_PASSWORD);
 console.log('📱 CALLMEBOT_PHONE set:', !!process.env.CALLMEBOT_PHONE);
 console.log('🔑 CALLMEBOT_API_KEY set:', !!process.env.CALLMEBOT_API_KEY);
 
-// Create transporter once using explicit Gmail SMTP (more reliable than service:'gmail')
+// Create transporter — port 587 STARTTLS + IPv4 forced (Railway blocks port 465 and IPv6)
 function createTransporter() {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
   if (!user || !pass) return null;
   return nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // SSL
+    port: 587,
+    secure: false,        // STARTTLS (not SSL)
+    requireTLS: true,
     auth: { user, pass },
+    family: 4,            // Force IPv4 — Railway IPv6 is unreachable
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   });
 }
 
