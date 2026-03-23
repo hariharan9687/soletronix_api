@@ -75,14 +75,12 @@ function generateId() {
 }
 
 // ============================================================
-// NOTIFICATIONS — Email (Nodemailer/Gmail SMTP) + WhatsApp (CallMeBot)
+// NOTIFICATIONS — Email (Nodemailer/Gmail SMTP)
 // ============================================================
 
 // Log env var presence at startup so Railway logs confirm config
 console.log('📧 GMAIL_USER set:', !!process.env.GMAIL_USER);
 console.log('🔑 GMAIL_APP_PASSWORD set:', !!process.env.GMAIL_APP_PASSWORD);
-console.log('📱 CALLMEBOT_PHONE set:', !!process.env.CALLMEBOT_PHONE);
-console.log('🔑 CALLMEBOT_API_KEY set:', !!process.env.CALLMEBOT_API_KEY);
 
 // Create transporter — port 587 STARTTLS + IPv4 forced (Railway blocks port 465 and IPv6)
 function createTransporter() {
@@ -147,26 +145,6 @@ function buildEmailHTML(lead) {
   `;
 }
 
-function buildWhatsAppText(lead) {
-  const bill = lead.monthlyBill ? `Rs.${Number(lead.monthlyBill).toLocaleString('en-IN')}` : 'N/A';
-  const name = `${lead.firstName} ${lead.lastName}`.trim();
-  const interested = Array.isArray(lead.interestedIn)
-    ? lead.interestedIn.join(', ')
-    : (lead.interestedIn || 'N/A');
-
-  const msg =
-    `New Lead - Soletronix\n\n` +
-    `Name: ${name}\n` +
-    `Phone: ${lead.phone}\n` +
-    `Email: ${lead.email}\n` +
-    `City: ${lead.city}${lead.state ? ', ' + lead.state : ''}\n` +
-    `Monthly Bill: ${bill}\n` +
-    `Interested In: ${interested}\n` +
-    `Source: ${lead.source || 'Energy Calculator'}\n\n` +
-    `View: https://soletronix.com/audit/admin.html`;
-
-  return encodeURIComponent(msg);
-}
 
 async function sendEmailNotification(lead) {
   const user = process.env.GMAIL_USER;
@@ -193,34 +171,13 @@ async function sendEmailNotification(lead) {
   }
 }
 
-async function sendWhatsAppNotification(lead) {
-  const phone  = process.env.CALLMEBOT_PHONE;
-  const apiKey = process.env.CALLMEBOT_API_KEY;
-
-  if (!phone || !apiKey) {
-    console.warn('⚠️  WhatsApp skipped: CALLMEBOT_PHONE or CALLMEBOT_API_KEY not set');
-    return;
-  }
-
-  try {
-    const text = buildWhatsAppText(lead);
-    const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${text}&apikey=${apiKey}`;
-    const res = await fetch(url);
-    const body = await res.text();
-    console.log(`📱 WhatsApp response: ${body.slice(0, 120)}`);
-  } catch (err) {
-    console.error('❌ WhatsApp notification failed:', err.message);
-  }
-}
 
 async function sendNotifications(lead) {
-  // Run independently — one failure does not block the other
   await sendEmailNotification(lead);
-  await sendWhatsAppNotification(lead);
 }
 
 // ── Test endpoint: GET /api/test-notification
-// Call this from browser to verify email+WhatsApp without submitting a lead
+// Call this from browser to verify email without submitting a lead
 app.get('/api/test-notification', async (req, res) => {
   const testLead = {
     firstName: 'Test', lastName: 'Lead',
@@ -234,7 +191,7 @@ app.get('/api/test-notification', async (req, res) => {
   };
   console.log('🧪 Test notification triggered');
   await sendNotifications(testLead);
-  res.json({ success: true, message: 'Test notification sent — check Railway logs and your WhatsApp/email' });
+  res.json({ success: true, message: 'Test notification sent — check Railway logs and your email' });
 });
 
 // LEADS
